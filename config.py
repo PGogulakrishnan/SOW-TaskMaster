@@ -106,7 +106,7 @@ if not GEMINI_API_KEY or GEMINI_API_KEY.lower().startswith("your_") or GEMINI_AP
     GEMINI_API_KEY = ""
 
 # Gemini model name — override via GEMINI_MODEL in the .env file
-GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash").strip()
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.5-flash").strip()
 
 # Whether to use the real Gemini API.
 #   USE_REAL_LLM=true/false  -> force on/off

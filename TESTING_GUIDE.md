@@ -27,7 +27,7 @@ Run each check below against the live URL. These are the acceptance checks for s
 ```powershell
 # PowerShell
 Invoke-RestMethod "https://sow-taskmaster-122458747029.us-central1.run.app/api/health"
-# expect: {"ok":true,"llm":false,"model":"gemini-2.5-flash"}
+# expect: {"ok":true,"llm":false,"model":"gemini-3.5-flash"}
 
 # open dashboard in a browser (or curl -I)
 curl.exe -I https://sow-taskmaster-122458747029.us-central1.run.app/

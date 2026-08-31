@@ -359,7 +359,7 @@ The e2e suite covers the failure paths judges love to poke at:
 | `CUSTOMER_FIRST_RESPONSE` / `SECOND_RESPONSE` | `redline` / `approve` | Scripted negotiation loop (exactly one round) |
 | `SIGNING_MODE` | `auto` | `auto` = sign immediately; `webhook` = park & wait for DocuSign callback |
 | `USE_REAL_LLM` | `auto` | `auto`/`true`/`false` — see Setup |
-| `GEMINI_MODEL` | `gemini-2.5-flash` | Model for real-LLM agent runs |
+| `GEMINI_MODEL` | `gemini-3.5-flash` | Model for real-LLM agent runs |
 | `WEB_HOST` / `WEB_PORT` | `127.0.0.1` / `8080` | Dashboard |
 
 ---
