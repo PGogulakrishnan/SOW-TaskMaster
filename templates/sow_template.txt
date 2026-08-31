@@ -1,0 +1,60 @@
+================================================================================
+STATEMENT OF WORK (SOW)
+================================================================================
+
+Project Title:    {{project_title}}
+Customer:         {{customer_name}}
+SOW Reference:    {{case_id}}
+Version:          {{version}}
+Date:             {{date}}
+
+================================================================================
+1. SCOPE OF WORK
+================================================================================
+
+{{scope_description}}
+
+================================================================================
+2. COMMERCIAL TERMS
+================================================================================
+
+Total Budget:           £{{budget_gbp:,.2f}}
+Delivery Timeline:      {{delivery_weeks}} weeks
+Warranty Period:        {{warranty_months}} months
+
+================================================================================
+3. DELIVERABLES
+================================================================================
+
+- Project kickoff within 5 business days of SOW signing
+- Weekly progress reports
+- Final delivery and acceptance within {{delivery_weeks}} weeks
+- Post-delivery support for {{warranty_months}} months
+
+================================================================================
+4. TERMS AND CONDITIONS
+================================================================================
+
+4.1 Payment Terms
+    - 50% upon SOW signing
+    - 50% upon final delivery and acceptance
+
+4.2 Change Management
+    - Any scope changes require a written change order signed by both parties
+
+4.3 Acceptance Criteria
+    - Deliverables must meet the scope defined in Section 1
+    - Customer has 10 business days to accept or request changes
+
+================================================================================
+5. SIGNATURES
+================================================================================
+
+For {{customer_name}}:          For Company:
+
+________________________      ________________________
+Name:                         Name:
+Title:                        Title:
+Date:                         Date:
+
+================================================================================

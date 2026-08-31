@@ -1,0 +1,13 @@
+# Exclude from the Cloud Build / Docker context
+.git/
+__pycache__/
+*.pyc
+.venv/
+venv/
+.env
+.env.*
+data/
+*.log
+.idea/
+.vscode/
+.DS_Store

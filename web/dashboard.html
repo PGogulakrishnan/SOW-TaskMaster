@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>SOW-TaskMaster Dashboard</title>
+<style>
+:root { --bg:#0f172a; --card:#1e293b; --accent:#38bdf8; }
+* { box-sizing:border-box; margin:0; padding:0; }
+body { background:var(--bg); color:#e2e8f0; font-family:Segoe UI,system-ui,sans-serif; padding:24px; }
+h1 { font-size:22px; }
+.sub { color:#94a3b8; font-size:13px; margin:6px 0 18px; }
+.row { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:16px; align-items:center; }
+button { background:var(--accent); color:#0f172a; border:none; border-radius:6px; padding:8px 14px; font-weight:600; cursor:pointer; }
+button.ghost { background:#334155; color:#e2e8f0; }
+select,input { background:#0f172a; color:#e2e8f0; border:1px solid #334155; border-radius:6px; padding:7px 10px; }
+.stats { display:flex; gap:12px; margin-bottom:18px; flex-wrap:wrap; }
+.stat { background:var(--card); border-radius:8px; padding:10px 16px; }
+.stat b { font-size:20px; }
+table { width:100%; border-collapse:collapse; background:var(--card); border-radius:8px; overflow:hidden; }
+th,td { text-align:left; padding:9px 12px; font-size:13px; border-bottom:1px solid #334155; }
+th { background:#33415555; }
+tr:hover { background:#33415566; cursor:pointer; }
+.pill { padding:2px 8px; border-radius:999px; font-size:11px; font-weight:700; }
+.pill.complete { background:#14532d; color:#4ade80; }
+.pill.blocked { background:#7c2d12; color:#fb923c; }
+.pill.active { background:#1e3a8a; color:#60a5fa; }
+.pill.awaiting_signature { background:#422006; color:#facc15; }
+.pill.rejected { background:#450a0a; color:#f87171; }
+#detail { display:none; margin-top:18px; background:var(--card); border-radius:8px; padding:18px; }
+#detail.open { display:block; }
+.tl { list-style:none; border-left:2px solid #334155; margin:12px 0 0 18px; }
+.tl li { margin:0 0 14px 18px; position:relative; }
+.tl li::before { content:''; position:absolute; left:-25px; top:4px; width:10px; height:10px; border-radius:50%; background:var(--accent); }
+.tl .who { color:var(--accent); font-weight:600; }
+.tl .meta { color:#94a3b8; font-size:12px; }
+.tl .reason { color:#cbd5e1; font-size:13px; margin-top:2px; }
+pre.draft { background:#0f172a; border:1px solid #334155; border-radius:6px; padding:12px; font-size:12px; white-space:pre-wrap; max-height:260px; overflow:auto; }
+.resolve-box { background:#0f172a; border:1px solid #334155; border-radius:8px; padding:12px; margin-top:12px; }
+.sec-head { display:flex; align-items:center; gap:8px; width:100%; background:var(--card); border:1px solid #334155; border-radius:8px; padding:9px 14px; color:#e2e8f0; font-size:14px; font-weight:700; cursor:pointer; text-align:left; margin-top:4px; }
+.sec-head:hover { border-color:var(--accent); }
+.sec-head .chev { color:var(--accent); transition:transform .25s ease; }
+.sec-head.collapsed .chev { transform:rotate(-90deg); }
+.sec-head .count { margin-left:auto; font-size:12px; font-weight:400; color:#94a3b8; }
+.collapsible { display:grid; grid-template-rows:1fr; transition:grid-template-rows .3s ease, opacity .3s ease; }
+.collapsible > .inner { overflow:hidden; min-height:0; }
+.collapsible.collapsed { grid-template-rows:0fr; opacity:.15; }
+.small { font-size:12px; color:#94a3b8; }
+h3 { margin:14px 0 6px; font-size:15px; }
+</style>
+</head>
+<body>
+<h1>SOW-TaskMaster - Agent Control Room</h1>
+<div class="sub">Multi-agent SOW signing automation - Google ADK + Gemini - live timeline, HITL decision queue, mock e-sign webhook</div>
+
+<div class="row">
+  <button onclick="startDemo()">Start demo case</button>
+  <select id="fStage" onchange="load()">
+    <option value="">All stages</option>
+    <option>INTAKE</option><option>DRAFTING</option><option>VALIDATION</option><option>APPROVAL</option>
+    <option>CUSTOMER_REVIEW</option><option>SIGNING</option><option>COMPLETE</option>
+  </select>
+  <select id="fStatus" onchange="load()">
+    <option value="">All statuses</option>
+    <option>active</option><option>blocked</option><option>awaiting_signature</option><option>complete</option><option>rejected</option>
+  </select>
+  <button class="ghost" onclick="load()">Refresh</button>
+</div>
+
+<button class="sec-head" id="summaryToggle" onclick="toggleSection('summaryWrap', this)"><span class="chev">&#9662;</span> Pipeline summary <span class="count" id="summaryCount"></span></button>
+<div class="collapsible" id="summaryWrap"><div class="inner"><div class="stats" id="stats"></div></div></div>
+<button class="sec-head" id="casesToggle" onclick="toggleSection('casesWrap', this)"><span class="chev">&#9662;</span> Cases <span class="count" id="casesCount"></span></button>
+<div class="collapsible" id="casesWrap"><div class="inner">
+<table>
+<thead><tr><th>Case</th><th>Project</th><th>Customer</th><th>Budget</th><th>Stage</th><th>Status</th><th></th></tr></thead>
+<tbody id="rows"></tbody>
+</table>
+</div></div>
+<div id="detail"></div>
+
+<script>
+var ALL = [];
+function esc(s){ if (s==null) return ''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+async function api(path, opts) { var r = await fetch(path, opts || {}); var j = await r.json(); if (!r.ok) throw new Error(j.detail || 'error'); return j; }
+function money(v){ return (v==null) ? '-' : 'GBP ' + v.toLocaleString(); }
+function tag(inner){ return '<span class="pill ' + inner + '">' + inner + '</span>'; }
+async function load() {
+  var st = document.getElementById('fStage').value;
+  var ss = document.getElementById('fStatus').value;
+  var url = '/api/cases?stage=' + encodeURIComponent(st) + '&status=' + encodeURIComponent(ss);
+  var data = await api(url);
+  ALL = data.cases;
+  var order = ['active','blocked','awaiting_signature','complete','rejected'];
+  var html = '';
+  for (var i=0;i<order.length;i++){ var k = order[i]; html += '<div class="stat"><span class="small">' + k + '</span><br><b>' + (data.stats[k]||0) + '</b></div>'; }
+  document.getElementById('stats').innerHTML = html;
+  var sc = document.getElementById('summaryCount');
+  if (sc) sc.textContent = ALL.length + ' case' + (ALL.length === 1 ? '' : 's');
+  var cc = document.getElementById('casesCount');
+  if (cc) cc.textContent = ALL.length + ' case' + (ALL.length === 1 ? '' : 's');
+  var rows = '';
+  for (var j=0;j<ALL.length;j++){
+    var c = ALL[j];
+    rows += '<tr onclick="openCase(\'' + c.case_id + '\')">';
+    rows += '<td>' + c.case_id + '</td><td>' + esc(c.project_title) + '</td><td>' + esc(c.customer_name) + '</td>';
+    rows += '<td>' + money(c.budget_gbp) + '</td><td>' + c.current_stage + '</td><td>' + tag(c.status) + '</td>';
+    rows += '<td>' + (c.escalated_to_human ? '<span class="pill blocked">HITL</span>' : '') + '</td></tr>';
+  }
+  document.getElementById('rows').innerHTML = rows;
+}
+async function openCase(id) {
+  var d = await api('/api/cases/' + id);
+  var t = d.timeline || [];
+  var html = '<h2>' + d.case_id + ' ' + tag(d.status) + '</h2>';
+  html += '<div class="small">' + esc(d.project_title) + ' - ' + esc(d.customer_name) + ' - ' + money(d.budget_gbp) + ' - ' + (d.requested_delivery_weeks||0) + ' weeks</div>';
+  if (d.validation_summary) html += '<p class="small" style="margin-top:8px">' + esc(d.validation_summary.replace(/\n/g,' ')) + '</p>';
+  if (d.status === 'awaiting_signature') html += '<div class="resolve-box"><button onclick="sendEsign(\'' + d.case_id + '\')">Simulate DocuSign webhook (sign now)</button></div>';
+  if (d.escalated_to_human) {
+    html += '<div class="resolve-box"><div class="small">Escalated: ' + esc(d.escalation_reason) + ' - awaiting human decision</div>';
+    html += '<input id="notes" placeholder="decision notes (optional)" style="margin-top:8px;width:60%">';
+    html += '<div class="row" style="margin-top:8px">';
+    if (d.escalation_stage === 'CUSTOMER_REVIEW') html += '<button onclick="resolve(\'' + d.case_id + '\',\'resend\')">Resend to customer</button>';
+    html += '<button onclick="resolve(\'' + d.case_id + '\',\'approve\')">Approve / override</button>';
+    html += '<button class="ghost" onclick="resolve(\'' + d.case_id + '\',\'reject\')">Reject</button></div></div>';
+  }
+  html += '<button class="sec-head" id="timelineToggle" onclick="toggleSection(\'timelineWrap\', this)"><span class="chev">&#9662;</span> Agent action timeline <span class="count">' + t.length + ' agent actions</span></button>';
+  html += '<div class="collapsible" id="timelineWrap"><div class="inner"><ul class="tl">';
+  for (var i=0;i<t.length;i++){ var e = t[i]; html += '<li><span class="who">[' + e.stage + '] ' + esc(e.agent_name) + '</span><div class="meta">' + esc(e.action) + '</div><div class="reason">' + esc(e.reasoning) + '</div><div class="meta">result: ' + esc(e.result) + '</div></li>'; }
+  html += '</ul></div></div>';
+  if (d.customer_redlines && d.customer_redlines.length) { html += '<h3>Customer redlines</h3><ul>'; for (var r=0;r<d.customer_redlines.length;r++){ html += '<li>' + esc(d.customer_redlines[r]) + '</li>'; } html += '</ul>'; }
+  if (d.draft_sow_text) {
+    html += '<button class="sec-head" id="draftToggle" onclick="toggleSection(\'draftWrap\', this)"><span class="chev">&#9662;</span> Final SOW draft (v' + d.draft_version + ') <span class="count">' + esc(d.draft_sow_text.length) + ' chars</span></button>';
+    html += '<div class="collapsible" id="draftWrap"><div class="inner"><pre class="draft">' + esc(d.draft_sow_text) + '</pre></div></div>';
+  }
+  var el = document.getElementById('detail'); el.innerHTML = html; el.classList.add('open');
+  applySavedSection('timelineWrap');
+  applySavedSectionCollapsed('draftWrap');
+}
+async function startDemo() { await api('/api/cases/start', {method:'POST', headers:{'Content-Type':'application/json'}, body:'{}'}); setTimeout(load, 900); }
+async function resolve(id, decision) { var notes = (document.getElementById('notes')||{}).value || ''; await api('/api/cases/' + id + '/resolve', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({decision: decision, notes: notes})}); load(); }
+async function sendEsign(id) { await api('/api/webhooks/esign/' + id, {method:'POST'}); load(); }
+function toggleSection(wrapId, btn) {
+  var wrap = document.getElementById(wrapId);
+  if (!wrap) return;
+  var collapsed = wrap.classList.toggle('collapsed');
+  var head = document.getElementById(wrapId.replace('Wrap', 'Toggle'));
+  if (head) head.classList.toggle('collapsed', collapsed);
+  try { localStorage.setItem('sow.sec.' + wrapId, collapsed ? '1' : '0'); } catch (e) {}
+}
+function applySavedSection(wrapId) {
+  var v = null; try { v = localStorage.getItem('sow.sec.' + wrapId); } catch (e) {}
+  if (v !== '1') return;
+  var wrap = document.getElementById(wrapId);
+  var head = document.getElementById(wrapId.replace('Wrap', 'Toggle'));
+  if (wrap) wrap.classList.add('collapsed');
+  if (head) head.classList.add('collapsed');
+}
+// Default-collapsed variant: stays collapsed unless the user explicitly expanded it (saved '0')
+function applySavedSectionCollapsed(wrapId) {
+  var v = null; try { v = localStorage.getItem('sow.sec.' + wrapId); } catch (e) {}
+  if (v === '0') return;
+  var wrap = document.getElementById(wrapId);
+  var head = document.getElementById(wrapId.replace('Wrap', 'Toggle'));
+  if (wrap) wrap.classList.add('collapsed');
+  if (head) head.classList.add('collapsed');
+}
+applySavedSection('summaryWrap');
+applySavedSectionCollapsed('casesWrap');
+load();
+setInterval(load, 4000);
+</script>
+</body>
+</html>
