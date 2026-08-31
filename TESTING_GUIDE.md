@@ -36,6 +36,9 @@ curl.exe -I https://sow-taskmaster-122458747029.us-central1.run.app/
 
 ### 1.2 Full lifecycle via API (the acceptance path)
 
+> 🖥️ **Easiest:** use the included helper — `.\scripts\cloud_demo.ps1` maps every CLI scenario to the
+> live REST API. See **Section 5** below for the runbook.
+
 ```powershell
 $base = "https://sow-taskmaster-122458747029.us-central1.run.app"
 
@@ -148,6 +151,38 @@ have the dashboard open at the start.
 | "Sign now" returns 400 | Case already complete / not awaiting signature | Start a **fresh** case |
 | Timeline collapsed | New default for cases/draft sections | Click the header bar to expand |
 | Sluggish first click | Cloud Run cold start (~5–20 s) | Keep the instance warm before recording; re-click |
+
+---
+
+## 5. 🕹️ Run CLI-style scenarios against the LIVE deployment
+
+`python main.py ...` runs **locally** against `data/cases/`. To run the same scenarios against the
+deployed Cloud Run app, use the REST API — wrapped for you in **`scripts/cloud_demo.ps1`**:
+
+```powershell
+cd C:\Users\gogul\Lab\SOW-TaskMaster
+.\scripts\cloud_demo.ps1 -Action health                        # {"ok":true,...}
+.\scripts\cloud_demo.ps1 -Action start                         # sample £45K -> awaiting_signature
+.\scripts\cloud_demo.ps1 -Action start -Request high           # £120K -> executive approval path
+.\scripts\cloud_demo.ps1 -Action start -Request invalid        # fails validation -> BLOCKED (HITL)
+.\scripts\cloud_demo.ps1 -Action cases                         # list all cases + stats
+.\scripts\cloud_demo.ps1 -Action case -CaseId SOW-XXXXXXXX     # detail incl. timeline
+.\scripts\cloud_demo.ps1 -Action resolve -CaseId SOW-XXXXXXXX -Decision approve -Notes "ok"   # approve|override|resend|reject
+.\scripts\cloud_demo.ps1 -Action sign -CaseId SOW-XXXXXXXX     # simulate DocuSign webhook
+.\scripts\cloud_demo.ps1 -Action query -Question "where is SOW-XXXXXXXX right now?"
+```
+
+Scenario → CLI-equivalent mapping (what the helper calls for you):
+
+| Local CLI | Live-REST equivalent (helper) |
+|---|---|
+| `python main.py --scenario high` | `-Action start -Request high` |
+| `python main.py --custom` | `-Action start -RequestText "…"` |
+| `python main.py --list` / `--status <id>` | `-Action cases` / `-Action case -CaseId <id>` |
+| `python main.py --blocked` | `-Action cases` (look for `blocked`) |
+| `python main.py --resolve <id> <dec>` | `-Action resolve -CaseId <id> -Decision <dec>` |
+| `python main.py --query "<q>"` | `-Action query -Question "<q>"` |
+| dashboard "Simulate DocuSign webhook" | `-Action sign -CaseId <id>` |
 
 ---
 
