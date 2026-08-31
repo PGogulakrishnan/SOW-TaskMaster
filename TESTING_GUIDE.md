@@ -8,7 +8,7 @@ Everything you need to test the deployed system and record a judge-ready demo vi
 |---|---|
 | **Dashboard URL** | https://sow-taskmaster-122458747029.us-central1.run.app |
 | **API health** | https://sow-taskmaster-122458747029.us-central1.run.app/api/health |
-| **Deployed env** | `USE_REAL_LLM=false` (mock LLM), `SIGNING_MODE=webhook` (sign via webhook button) |
+| **Deployed env** | `USE_REAL_LLM=true` — **live Gemini** via Vertex AI (model `gemini-2.5-flash`), `SIGNING_MODE=webhook` |
 | **Hosting** | Google Cloud Run (`us-central1`), project `my-agent-learning-project-01` |
 | **GitHub** | https://github.com/PGogulakrishnan/SOW-TaskMaster |
 
@@ -27,7 +27,7 @@ Run each check below against the live URL. These are the acceptance checks for s
 ```powershell
 # PowerShell
 Invoke-RestMethod "https://sow-taskmaster-122458747029.us-central1.run.app/api/health"
-# expect: {"ok":true,"llm":false,"model":"gemini-3.5-flash"}
+# expect: {"ok":true,"llm":true,"model":"gemini-2.5-flash"}   (llm:true = live Gemini)
 
 # open dashboard in a browser (or curl -I)
 curl.exe -I https://sow-taskmaster-122458747029.us-central1.run.app/

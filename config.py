@@ -105,8 +105,11 @@ GEMINI_API_KEY = (os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY") or 
 if not GEMINI_API_KEY or GEMINI_API_KEY.lower().startswith("your_") or GEMINI_API_KEY.startswith("<"):
     GEMINI_API_KEY = ""
 
-# Gemini model name — override via GEMINI_MODEL in the .env file
-GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.5-flash").strip()
+# Gemini model name — override via GEMINI_MODEL in the .env file.
+# NOTE: `gemini-3.5-flash` is NOT served on Vertex us-central1 for this
+# project (404); `gemini-2.5-flash` is the newest Flash that responds.
+# Verify anytime with: python scripts/probe_models.py
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash").strip()
 
 # Whether to use the real Gemini API.
 #   USE_REAL_LLM=true/false  -> force on/off

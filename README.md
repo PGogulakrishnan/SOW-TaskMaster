@@ -359,7 +359,7 @@ The e2e suite covers the failure paths judges love to poke at:
 | `CUSTOMER_FIRST_RESPONSE` / `SECOND_RESPONSE` | `redline` / `approve` | Scripted negotiation loop (exactly one round) |
 | `SIGNING_MODE` | `auto` | `auto` = sign immediately; `webhook` = park & wait for DocuSign callback |
 | `USE_REAL_LLM` | `auto` | `auto`/`true`/`false` — see Setup |
-| `GEMINI_MODEL` | `gemini-3.5-flash` | Model for real-LLM agent runs |
+| `GEMINI_MODEL` | `gemini-2.5-flash` | Model for real-LLM agent runs |
 | `WEB_HOST` / `WEB_PORT` | `127.0.0.1` / `8080` | Dashboard |
 
 ---
@@ -399,19 +399,26 @@ gcloud services enable run.googleapis.com cloudbuild.googleapis.com artifactregi
 #      --member="serviceAccount:<PROJECT_NUMBER>-compute@developer.gserviceaccount.com" \
 #      --role=roles/cloudbuild.builds.builder   (also storage.objectAdmin, artifactregistry.writer)
 
-# 3. Deploy from the repo root (Dockerfile provided)
+# 3. Deploy from the repo root (Dockerfile provided) — live Gemini config:
 gcloud run deploy sow-taskmaster --source . --region us-central1 \
   --allow-unauthenticated --max-instances=1 \
-  '--set-env-vars=USE_REAL_LLM=false,SIGNING_MODE=webhook,WEB_HOST=0.0.0.0'
+  '--set-env-vars=USE_REAL_LLM=true,GEMINI_MODEL=gemini-2.5-flash,GOOGLE_GENAI_USE_ENTERPRISE=1,GOOGLE_CLOUD_PROJECT=my-agent-learning-project-01,GOOGLE_CLOUD_LOCATION=us-central1,SIGNING_MODE=webhook,WEB_HOST=0.0.0.0'
 ```
 
 Notes for judges:
-- `USE_REAL_LLM=false` → deterministic mock path (no API key needed).
+- `USE_REAL_LLM=true` + the Vertex backend (`GOOGLE_GENAI_USE_ENTERPRISE=1` + project/location) → the
+  deployed agents make **live Gemini calls** for intake extraction, SOW drafting, customer-email
+  composition and natural-language queries. Validation stays deterministic/rule-based by design.
+- Auth is Application Default Credentials from the runtime service account (needs
+  `roles/aiplatform.user` + the AI Platform API enabled) — **no API key is baked into the container**.
+- Model is `gemini-2.5-flash`: `gemini-3.5-flash` is not served on Vertex `us-central1` for this
+  project (404); this was verified with `scripts/probe_models.py`.
 - `SIGNING_MODE=webhook` → the case parks at `awaiting_signature` until the simulated DocuSign callback
   (`POST /api/webhooks/esign/{id}`) completes it.
 - `--max-instances=1` keeps the in-process mock e-signature envelope available to the dashboard's
   "Simulate DocuSign webhook" button. Cloud Run state is ephemeral — click **Start demo case** each run.
-- Fully expandable to `USE_REAL_LLM=true` + `GEMINI_API_KEY`/Vertex when credentials are available.
+- LLM calls add a few seconds per stage; a full case run takes ~30–60s (vs ~5s in mock mode).
+- To run fully offline/deterministic (no Vertex dependency): redeploy with `USE_REAL_LLM=false`.
 
 ---
 
