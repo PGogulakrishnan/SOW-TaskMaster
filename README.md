@@ -6,6 +6,9 @@ SOW-TaskMaster is a **multi-agent system** that orchestrates the full Statement 
 
 > 🎯 **The demo story:** one believable, end-to-end run — intake → draft → validate → approve → redline round → sign — fully logged, resumable, explainable, and queryable in natural language. Every agent decision is recorded with its reasoning.
 
+> 🚀 **🔴 LIVE NOW on Google Cloud Run:** try the deployed dashboard at **https://sow-taskmaster-122458747029.us-central1.run.app**
+> — click **"Start demo case"**, then **"Simulate DocuSign webhook (sign now)"**. Full test + video-recording script: **[TESTING_GUIDE.md](./TESTING_GUIDE.md)**.
+
 ---
 
 ## Why this problem
@@ -379,6 +382,36 @@ The e2e suite covers the failure paths judges love to poke at:
 | NFR2 resumable state machine | `run_lifecycle_from()` + JSON `StateStore` |
 | NFR3 swappable mocks | `ports.py` Protocols + `mocks/` |
 | NFR4 end-to-end in minutes | `python main.py` / one dashboard click |
+
+---
+
+## ☁️ Cloud Deployment (Google Cloud Run)
+
+The system deploys as a single container via cloud-native build — **no local Docker required**.
+
+```bash
+# 1. One-time: point gcloud at your project + enable APIs
+gcloud config set project my-agent-learning-project-01
+gcloud services enable run.googleapis.com cloudbuild.googleapis.com artifactregistry.googleapis.com
+
+# 2. One-time: grant the default compute SA build/storage/registry roles (owner not assumed)
+#    gcloud projects add-iam-policy-binding my-agent-learning-project-01 \
+#      --member="serviceAccount:<PROJECT_NUMBER>-compute@developer.gserviceaccount.com" \
+#      --role=roles/cloudbuild.builds.builder   (also storage.objectAdmin, artifactregistry.writer)
+
+# 3. Deploy from the repo root (Dockerfile provided)
+gcloud run deploy sow-taskmaster --source . --region us-central1 \
+  --allow-unauthenticated --max-instances=1 \
+  '--set-env-vars=USE_REAL_LLM=false,SIGNING_MODE=webhook,WEB_HOST=0.0.0.0'
+```
+
+Notes for judges:
+- `USE_REAL_LLM=false` → deterministic mock path (no API key needed).
+- `SIGNING_MODE=webhook` → the case parks at `awaiting_signature` until the simulated DocuSign callback
+  (`POST /api/webhooks/esign/{id}`) completes it.
+- `--max-instances=1` keeps the in-process mock e-signature envelope available to the dashboard's
+  "Simulate DocuSign webhook" button. Cloud Run state is ephemeral — click **Start demo case** each run.
+- Fully expandable to `USE_REAL_LLM=true` + `GEMINI_API_KEY`/Vertex when credentials are available.
 
 ---
 
